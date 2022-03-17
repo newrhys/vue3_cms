@@ -7,7 +7,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onBeforeMount } from 'vue'
+import { defineComponent } from 'vue'
 import HelloWorld from '@/components/HelloWorld.vue'
 import httpReuqest from '@/utils/request'
 

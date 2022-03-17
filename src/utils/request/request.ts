@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios'
-import { LoadingInstance } from 'element-plus/lib/components/loading/src/loading'
 import { RequestConfig, RequestInterceptors } from '@/utils/request/type'
 import { ElLoading } from 'element-plus'
+import { LoadingInstance } from 'element-plus/lib/components/loading/src/loading'
 
 class netRequest {
   instance: AxiosInstance
@@ -13,26 +13,18 @@ class netRequest {
     this.instance = axios.create(config)
     //loading
     this.showLoading = config.showLoading ?? true
-
-    //传入的实例
-    this.instance.interceptors.request.use(
-      this.interceptors?.requestInterceptor,
-      this.interceptors?.requestInterceptorCatch
-    )
-    //响应
-    this.instance.interceptors.response.use(
-      this.interceptors?.responseInterceptor,
-      this.interceptors?.responseInterceptorCatch
-    )
-
+    this.interceptors = config.interceptors
     this.instance.interceptors.request.use(
       config => {
         if (this.showLoading) {
+          console.log(1231231)
+          // this.loading = ElLoading.service({ fullscreen: true })
           this.loading = ElLoading.service({
             lock: true,
-            text: '正在请求数据....',
-            background: 'rgba(0, 0, 0, 0.5)'
+            text: '正在请求数据...',
+            background: 'rgb(0,0,0,0.5)'
           })
+          console.log(this.loading, '--this.loading')
         }
         return config
       },
@@ -44,7 +36,7 @@ class netRequest {
     this.instance.interceptors.response.use(
       res => {
         this.loading?.close()
-        this.showLoading = false
+        // this.showLoading = false
         return res.data
       },
       err => {
@@ -53,49 +45,65 @@ class netRequest {
         if (err.response.status === 404) {
           console.log('404的错误~')
         }
-        this.showLoading = false
+        // this.showLoading = false
         return err
       }
     )
+    //传入的实例
+    this.instance.interceptors.request.use(
+      this.interceptors?.requestInterceptor,
+      this.interceptors?.requestInterceptorCatch
+    )
+    //响应
+    this.instance.interceptors.response.use(
+      this.interceptors?.responseInterceptor,
+      this.interceptors?.responseInterceptorCatch
+    )
   }
 
-  request(config: RequestConfig): Promise<any> {
+  request<T = any>(config: RequestConfig<T>): Promise<T> {
     const { url, data, method } = config
-    const newConfig: RequestConfig = {}
+    let newConfig: RequestConfig<T> = {}
     newConfig.url = url
+    newConfig.method = method
     method!.toLowerCase() === 'get'
       ? (newConfig['params'] = data)
       : (newConfig['data'] = data)
-    console.log(newConfig)
     return new Promise((reolve, reject) => {
       if (config.interceptors?.requestInterceptor) {
-        config = config.interceptors.requestInterceptor(newConfig)
+        newConfig = config.interceptors.requestInterceptor(newConfig)
       }
       //
-      this.instance(config)
+      if (config.showLoading === false) {
+        this.showLoading = config.showLoading
+      }
+      this.instance
+        .request<any, T>(newConfig)
         .then(res => {
           if (config.interceptors?.responseInterceptor) {
             res = config.interceptors.responseInterceptor(res)
-            console.log(res)
-            reolve(res)
           }
+          this.showLoading = true
+          console.log(res)
+          reolve(res)
         })
         .catch(err => {
+          this.showLoading = true
           reject(err)
           return err
         })
     })
   }
 
-  get<T = any>(config: RequestConfig): Promise<T> {
-    console.log({ ...config, method: 'GET' })
+  get<T = any>(config: RequestConfig<T>): Promise<T> {
     return this.request({ ...config, method: 'GET' })
   }
 
-  post<T = any>(config: RequestConfig): Promise<T> {
-    console.log({ ...config, method: 'GET' })
-    return this.request({ ...config, method: 'POST' })
+  post<T = any>(config: RequestConfig<T>): Promise<T> {
+    return this.request<T>({ ...config, method: 'POST' })
+  }
+  patch<T = any>(config: RequestConfig<T>): Promise<T> {
+    return this.request<T>({ ...config, method: 'PATCH' })
   }
 }
-
 export default netRequest
